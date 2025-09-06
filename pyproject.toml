@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "distributed-fpguard"
+version = "0.1.0"
+description = "Distributed FPGuard: Parallel Fingerprint Attribution for Contamination Detection"
+authors = [{name = "Anonymous"}]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+fpguard-train = "fpguard.cli.train:app"
+fpguard-build-bank = "fpguard.cli.build_bank:app"
+fpguard-infer = "fpguard.cli.infer:app"
+fpguard-detox = "fpguard.cli.detox:app"
+
