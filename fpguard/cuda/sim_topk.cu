@@ -45,6 +45,7 @@ __global__ void rowwise_topk_kernel(
 std::vector<at::Tensor> rowwise_topk_cuda(const at::Tensor &scores, int64_t k) {
   TORCH_CHECK(scores.is_cuda(), "scores must be CUDA tensor");
   TORCH_CHECK(scores.dim() == 2, "scores must be 2D [Q, K]");
+  TORCH_CHECK(scores.is_contiguous(), "scores must be contiguous");
   const auto Q = scores.size(0);
   const auto K = scores.size(1);
 
@@ -56,13 +57,18 @@ std::vector<at::Tensor> rowwise_topk_cuda(const at::Tensor &scores, int64_t k) {
   const int threads = 256;
   const int blocks = (Q + threads - 1) / threads;
 
+  cudaStream_t stream = at::cuda::getCurrentCUDAStream();
+
   AT_DISPATCH_FLOATING_TYPES(scores.scalar_type(), "rowwise_topk_cuda", ([&] {
-    rowwise_topk_kernel<scalar_t><<<blocks, threads>>>(
+    rowwise_topk_kernel<scalar_t><<<blocks, threads, 0, stream>>>(
         scores.data_ptr<scalar_t>(),
         topk_vals.data_ptr<scalar_t>(),
         topk_idx.data_ptr<int64_t>(),
         (int)Q, (int)K, (int)k);
   }));
+
+  auto err = cudaGetLastError();
+  TORCH_CHECK(err == cudaSuccess, "Kernel launch failed: ", cudaGetErrorString(err));
 
   return {topk_vals, topk_idx};
 }

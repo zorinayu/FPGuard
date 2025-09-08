@@ -1,11 +1,11 @@
 import os
-from typing import Tuple
+from typing import Tuple, Any, cast
 
-import torch
-from torch.utils.cpp_extension import load as load_ext
+import torch  # type: ignore[import-not-found]
+from torch.utils.cpp_extension import load as load_ext  # type: ignore[import-not-found]
 
 
-_ext = None
+_ext: Any = None
 
 
 def _load_extension() -> None:
@@ -39,10 +39,12 @@ def cosine_sim_topk(a: torch.Tensor, b: torch.Tensor, k: int) -> Tuple[torch.Ten
     assert a.is_cuda and b.is_cuda, "Inputs must be CUDA tensors"
     a_norm = torch.nn.functional.normalize(a, dim=-1)
     b_norm = torch.nn.functional.normalize(b, dim=-1)
-    scores = a_norm @ b_norm.t()  # [Q, K]
+    scores = (a_norm @ b_norm.t()).contiguous()  # [Q, K]
 
     if available():
-        vals, idx = _ext.rowwise_topk(scores, int(k))
+        k = int(min(k, scores.shape[1]))
+        ext = cast(Any, _ext)
+        vals, idx = ext.rowwise_topk(scores, k)
         return vals, idx
     # Fallback
     vals, idx = torch.topk(scores, k=min(k, scores.shape[-1]), dim=-1)
